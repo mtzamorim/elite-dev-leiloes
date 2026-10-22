@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: atelier
+      POSTGRES_USER: atelier
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atelier -d atelier"]
+      interval: 5s
+      retries: 20
+      timeout: 3s
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://atelier:${POSTGRES_PASSWORD}@postgres:5432/atelier?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
+      AUDIT_SECRET: ${AUDIT_SECRET:?Defina AUDIT_SECRET no .env}
+      AUDIT_ANCHOR_FILE: /app/storage/audit-anchors.ndjson
+      DEMO_SEED: ${DEMO_SEED:-false}
+    volumes:
+      - audit_anchors:/app/storage
+    ports:
+      - '3001:3001'
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+volumes:
+  postgres_data:
+  audit_anchors:
