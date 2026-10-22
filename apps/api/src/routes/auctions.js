@@ -51,7 +51,10 @@ export function makeAuctionRoutes({secret,anchorFile,notify}) {
     const id=uuid.parse(req.params.id);
     const auction=await prisma.auction.findUnique({where:{id},include});
     if(!auction) badRequest('NOT_FOUND','Lote não encontrado.',404);
-    res.json({auction:auctionView(auction,secret,req.user?.id),serverTime:new Date()});
+    const participation = req.user?.role==='BIDDER'
+      ? await prisma.bid.findFirst({where:{auctionId:id,userId:req.user.id},select:{id:true}})
+      : null;
+    res.json({auction:{...auctionView(auction,secret,req.user?.id),hasParticipated:Boolean(participation)},serverTime:new Date()});
   }));
   routes.get('/:id/bids',wrap(async(req,res)=>{
     const id=uuid.parse(req.params.id);

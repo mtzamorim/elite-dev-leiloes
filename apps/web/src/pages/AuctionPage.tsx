@@ -1,5 +1,5 @@
 import { useCallback,useEffect,useState,type FormEvent } from 'react';
-import { ArrowLeft,ArrowUpRight,BadgeCheck,Clock3,Info,LockKeyhole,ShieldCheck,TrendingUp,Wallet } from 'lucide-react';
+import { AlertTriangle,ArrowLeft,ArrowUpRight,BadgeCheck,Clock3,Info,LockKeyhole,ShieldCheck,TrendingUp,Wallet } from 'lucide-react';
 import { Link,useNavigate,useParams } from 'react-router-dom';
 import { api,formatDate,formatMoney,post,reaisToCents } from '../lib/api';
 import type {Auction,Bid} from '../lib/types';
@@ -50,7 +50,8 @@ export function AuctionPage() {
       <div className="auction-right"><div className="detail-head"><div className="detail-topline"><span className="eyebrow">LOTE #{auction.id.slice(0,8).toUpperCase()}</span><Status status={auction.status}/></div><h1>{auction.title}</h1><p>por {auction.artist}</p></div>
         <div className="bid-panel"><div className="bid-topline"><span>{auction.currentBidCents?'Lance mais alto':'Lance inicial'}</span><span className="bid-count"><TrendingUp size={15}/> {auction.numberOfBids} lances</span></div><div className="bid-amount">{formatMoney(auction.currentBidCents??auction.initialBidCents)}</div><div className="bid-leader">{auction.leaderAlias?<>Liderança: <strong>{auction.leaderAlias}</strong></>:<>Este lote ainda não recebeu lances</>}</div>
           <div className="bid-countdown"><Clock3 size={20}/><Countdown status={auction.status} endAt={auction.endsAt} startAt={auction.startsAt}/></div>
-          {auction.isLeading&&auction.status==='LIVE'&&<div className="winning-banner"><BadgeCheck size={18}/> Você está ganhando este lote!</div>}
+          {auction.isLeading&&auction.status==='LIVE'&&<div className="winning-banner" role="status"><BadgeCheck size={18}/> Você está ganhando este lote!</div>}
+          {auction.hasParticipated&&!auction.isLeading&&auction.status==='LIVE'&&<div className="outbid-banner" role="status"><AlertTriangle size={18}/> Você foi superado. Faça um novo lance para voltar à disputa.</div>}
           {auction.status==='LIVE'&&user?.role==='BIDDER'&&!auction.isLeading&&<form className="bid-form" onSubmit={onBid}><label htmlFor="bid-value">Seu próximo lance <span>(mínimo {formatMoney(auction.minNextBidCents)})</span></label><div className="money-input"><span>R$</span><input id="bid-value" inputMode="decimal" type="number" step="0.01" min={Number(auction.minNextBidCents)/100} value={amount} onChange={e=>setAmount(e.target.value)} required/></div><button className="btn btn-primary btn-wide" type="submit" disabled={busy}>{busy?'Registrando lance...':'Confirmar meu lance'} <ArrowUpRight size={18}/></button></form>}
           {auction.status==='LIVE'&&!user&&<button className="btn btn-primary btn-wide" onClick={()=>navigate(`/entrar?redirect=${encodeURIComponent(`/lote/${auction.id}`)}`)}>Entre para dar um lance <ArrowUpRight size={18}/></button>}
           {auction.status==='LIVE'&&user?.role==='AUCTIONEER'&&<div className="feedback">Leiloeiros gerenciam lotes, mas não podem participar de lances.</div>}

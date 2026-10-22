@@ -56,3 +56,10 @@ test('leiloeiro confirma estorno informando justificativa',async({page})=>{
   await page.getByRole('button',{name:'Confirmar cancelamento'}).click();
   await expect(page.getByText(/Lote cancelado/)).toBeVisible();
 });
+
+test('licitante superado recebe indicador explícito na sala',async({page})=>{
+  await mockBase(page,bidder);
+  await page.route(`**/api/auctions/${auctionId}`,route=>route.fulfill({json:{auction:fakeAuction({hasParticipated:true,isLeading:false})}}));
+  await page.goto(`/lote/${auctionId}`);
+  await expect(page.getByText(/Você foi superado\. Faça um novo lance/)).toBeVisible();
+});

@@ -9,7 +9,7 @@ export interface Auction {
   id:string; title:string;artist:string;artworkDate:string;artworkId:number;
   description:string;imageUrl:string;ownerName:string;
   initialBidCents:Money;incrementCents:Money;currentBidCents:Money | null;
-  minNextBidCents:Money;leaderAlias:string|null;isLeading:boolean;isOwner:boolean;
+  minNextBidCents:Money;leaderAlias:string|null;isLeading:boolean;isOwner:boolean;hasParticipated?:boolean;
   startsAt:string;endsAt:string;status:AuctionStatus;numberOfBids:number;
   receiptId:string|null;cancellationReason:string|null;createdAt:string;
 }
