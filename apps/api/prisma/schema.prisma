@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  AUCTIONEER
+  BIDDER
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELED
+}
+
+enum WalletEntryKind {
+  DEPOSIT
+  RESERVE
+  RELEASE
+  SETTLEMENT_DEBIT
+  SETTLEMENT_CREDIT
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String         @db.VarChar(120)
+  email         String         @unique @db.VarChar(255)
+  passwordHash  String
+  role          UserRole
+  balanceCents  BigInt         @default(0)
+  lockedCents   BigInt         @default(0)
+  createdAt     DateTime       @default(now())
+  auctions      Auction[]      @relation("OwnedAuctions")
+  wonAuctions   Auction[]      @relation("WonAuctions")
+  bids          Bid[]
+  walletEntries WalletEntry[]
+}
+
+model Auction {
+  id                 String        @id @default(uuid()) @db.Uuid
+  ownerId            String        @db.Uuid
+  owner              User          @relation("OwnedAuctions", fields: [ownerId], references: [id])
+  winnerId           String?       @db.Uuid
+  winner             User?         @relation("WonAuctions", fields: [winnerId], references: [id])
+  artworkId          Int
+  title              String        @db.VarChar(280)
+  artist             String        @db.VarChar(280)
+  imageUrl           String
+  artworkDate        String        @db.VarChar(100)
+  description        String        @default("") @db.VarChar(2000)
+  initialBidCents    BigInt
+  incrementCents     BigInt
+  currentBidCents    BigInt?
+  leaderId           String?       @db.Uuid
+  startsAt           DateTime
+  endsAt             DateTime
+  status             AuctionStatus @default(SCHEDULED)
+  nextSequence       Int           @default(1)
+  chainHead          String        @default("")
+  cancellationReason String?
+  canceledAt         DateTime?
+  finishedAt         DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  bids               Bid[]
+  receipt            Receipt?
+  @@index([status, startsAt, endsAt])
+  @@index([ownerId, createdAt])
+}
+
+model Bid {
+  id           String    @id @default(uuid()) @db.Uuid
+  auctionId    String    @db.Uuid
+  auction      Auction   @relation(fields: [auctionId], references: [id])
+  userId       String    @db.Uuid
+  user         User      @relation(fields: [userId], references: [id])
+  sequence     Int
+  amountCents  BigInt
+  previousHash String    @default("")
+  signature    String
+  createdAt    DateTime  @default(now())
+  @@unique([auctionId, sequence])
+  @@index([userId, createdAt])
+}
+
+model WalletEntry {
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @db.Uuid
+  user         User            @relation(fields: [userId], references: [id])
+  kind         WalletEntryKind
+  amountCents  BigInt
+  auctionId    String?         @db.Uuid
+  createdAt    DateTime        @default(now())
+  @@index([userId, createdAt])
+}
+
+model Receipt {
+  id           String   @id @default(uuid()) @db.Uuid
+  auctionId    String   @unique @db.Uuid
+  auction      Auction  @relation(fields: [auctionId], references: [id])
+  bidId        String   @db.Uuid
+  winnerAlias  String
+  amountCents  BigInt
+  chainHead    String
+  signature    String
+  createdAt    DateTime @default(now())
+}
