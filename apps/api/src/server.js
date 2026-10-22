@@ -25,9 +25,9 @@ app.disable('x-powered-by');
 app.set('trust proxy',1);
 app.set('json replacer',(_key,value)=>typeof value==='bigint' ? String(value) : value);
 app.use(helmet({contentSecurityPolicy:{directives:{
-  defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'"],
+  defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],
   imgSrc:["'self'",'data:','https://www.artic.edu'],connectSrc:["'self'",'ws:','wss:'],
-  fontSrc:["'self'",'data:'],objectSrc:["'none'"]
+  fontSrc:["'self'",'data:','https://fonts.gstatic.com'],objectSrc:["'none'"]
 }}}));
 app.use(express.json({limit:'32kb'}));
 app.use(cookieParser());
@@ -35,7 +35,8 @@ app.use('/api', (req,_res,next)=>{
   if(!['GET','HEAD','OPTIONS'].includes(req.method)) {
     const origin=req.get('origin');
     const hostname=req.get('x-forwarded-host') || req.get('host');
-    const allowedOrigin=origin && new URL(origin).host===hostname;
+    let allowedOrigin=false;
+    try { allowedOrigin=Boolean(origin && new URL(origin).host===hostname); } catch { /* rejeitado abaixo */ }
     const devOrigin=!env.production && origin && /^http:\/\/localhost:5173$/.test(origin);
     if((origin && !allowedOrigin && !devOrigin) || req.get('sec-fetch-site')==='cross-site') {
       return next(new DomainError('CSRF','Origem não autorizada.',403));

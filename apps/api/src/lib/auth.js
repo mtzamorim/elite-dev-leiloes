@@ -28,11 +28,11 @@ export const optionalAuth = wrap(async (req, _res, next) => {
 });
 
 export const requireAuth = (req, _res, next) => {
-  if (!req.user) return next(badRequest('AUTH', 'Entre na sua conta para continuar.', 401));
+  if (!req.user) badRequest('AUTH', 'Entre na sua conta para continuar.', 401);
   next();
 };
 
 export const requireRole = (role) => (req, _res, next) => {
-  if (req.user?.role !== role) return next(badRequest('ROLE', `Esta ação exige o perfil ${role === 'BIDDER' ? 'licitante' : 'leiloeiro'}.`, 403));
+  if (req.user?.role !== role) badRequest('ROLE', `Esta ação exige o perfil ${role === 'BIDDER' ? 'licitante' : 'leiloeiro'}.`, 403);
   next();
 };

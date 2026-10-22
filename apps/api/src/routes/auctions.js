@@ -30,7 +30,7 @@ export function makeAuctionRoutes({secret,anchorFile,notify}) {
     if(q) where.OR=[{title:{contains:q,mode:'insensitive'}},{artist:{contains:q,mode:'insensitive'}}];
     if(status==='LIVE') { where.status={in:['SCHEDULED','LIVE']};where.startsAt={lte:now};where.endsAt={gt:now}; }
     if(status==='SCHEDULED') { where.status={in:['SCHEDULED','LIVE']};where.startsAt={gt:now}; }
-    if(status==='ENDED') { where.OR=[...(where.OR ? [{AND:[{OR:where.OR},{OR:[{status:'ENDED'},{endsAt:{lte:now}}]}]}] : [{status:'ENDED'},{endsAt:{lte:now}}])]; delete where.status; }
+    if(status==='ENDED') where.AND=[{OR:[{status:'ENDED'},{endsAt:{lte:now}}]}];
     const [items,total]=await prisma.$transaction([
       prisma.auction.findMany({where,include,orderBy:[{createdAt:'desc'}],skip:(page-1)*12,take:12}),
       prisma.auction.count({where})

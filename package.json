@@ -2,7 +2,10 @@
   "name": "atelier-leiloes",
   "private": true,
   "version": "1.0.0",
-  "workspaces": ["apps/api", "apps/web"],
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
   "scripts": {
     "dev": "concurrently -n API,WEB -c cyan,magenta \"npm run dev -w @atelier/api\" \"npm run dev -w @atelier/web\"",
     "build": "npm run db:generate && npm run build -w @atelier/web",
@@ -16,13 +19,17 @@
     "test:api": "node --test apps/api/tests/*.integration.test.js",
     "test:web": "vitest run --config apps/web/vite.config.ts",
     "typecheck": "tsc -p apps/web/tsconfig.json --noEmit",
-    "lint:syntax": "node scripts/check-syntax.mjs"
+    "lint:syntax": "node scripts/check-syntax.mjs",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "concurrently": "9.1.2",
     "prisma": "6.19.0",
     "typescript": "5.8.3",
-    "vitest": "3.1.1"
+    "vitest": "3.1.1",
+    "@playwright/test": "1.55.0"
   },
-  "engines": {"node": ">=20.11"}
+  "engines": {
+    "node": ">=20.11"
+  }
 }
