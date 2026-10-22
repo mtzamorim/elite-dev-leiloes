@@ -9,3 +9,6 @@ coverage/
 storage/*
 !storage/.gitkeep
 .vite/
+playwright-report/
+test-results/
+*.tsbuildinfo

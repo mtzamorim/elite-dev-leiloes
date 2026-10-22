@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ArrowRight,ImageOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type {Auction} from '../lib/types';
@@ -19,10 +20,10 @@ export function AuctionCard({auction}:{auction:Auction}) {
     </div>
   </Link>;
 }
-export function EmptyState({title,description,action}:{title:string;description:string;action?:React.ReactNode}) {
+export function EmptyState({title,description,action}:{title:string;description:string;action?:ReactNode}) {
   return <div className="empty-state"><div className="empty-art">✦</div><h3>{title}</h3><p>{description}</p>{action}</div>;
 }
-export function PageHeading({eyebrow,title,description,children}:{eyebrow:string;title:string;description?:string;children?:React.ReactNode}) {
+export function PageHeading({eyebrow,title,description,children}:{eyebrow:string;title:string;description?:string;children?:ReactNode}) {
   return <div className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{description&&<p className="muted">{description}</p>}</div>{children&&<div className="heading-actions">{children}</div>}</div>;
 }
 export function Feedback({message,error=false}:{message:string;error?:boolean}) {

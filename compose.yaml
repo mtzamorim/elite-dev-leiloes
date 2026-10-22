@@ -29,7 +29,7 @@ services:
     volumes:
       - audit_anchors:/app/storage
     ports:
-      - '3001:3001'
+      - '127.0.0.1:3001:3001'
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s

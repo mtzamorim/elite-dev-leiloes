@@ -1,0 +1,23 @@
+# Sobreponha ao compose.yaml em um servidor com dominio e portas 80/443 abertas.
+services:
+  app:
+    environment:
+      TRUST_PROXY: 'true'
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app: {condition: service_healthy}
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:?Defina o dominio publico no .env}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,5 @@
+# Para trabalhar com frontend/API fora do Docker, expor SOMENTE o Postgres na interface local.
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'
