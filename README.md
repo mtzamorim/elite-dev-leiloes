@@ -12,11 +12,11 @@ Uma casa de leilões de obras de arte do acervo público do **Art Institute of C
 - **Perfis separados:** Leiloeiro publica/gerencia; Licitante deposita, participa, acompanha lances e arremates. Regras de autorização validadas no backend.
 - **Vitrine:** Lotes ao vivo, programados e encerrados; cancelados não aparecem. Busca por obra/artista, filtros e paginação.
 - **Catálogo externo:** Busca no Art Institute of Chicago com timeout de 5 s, cache e snapshot local no lote. Indisponibilidade externa não afeta leilões publicados.
-- **Sala ao vivo:** Lance atual, mínimo seguinte, líder anônimo, histórico, contagem regressiva e atualização via Socket.IO (sem F5).
+- **Sala ao vivo:** Lance atual, mínimo seguinte, líder anônimo, histórico, contagem regressiva e Socket.IO com reinscrição automática da sala após reconexões (sem F5).
 - **Carteira:** Saldo total, comprometido, disponível, depósitos fictícios e lançamentos. Reservas transferidas quando há novo líder.
 - **Anti-sniping:** Lance válido aceito com até 2 minutos restantes prorroga `endsAt` em mais 2 minutos.
 - **Liquidação:** Ao encerrar, só o vencedor é debitado, o leiloeiro é creditado, e um comprovante público assinado é gerado. Lote sem lances encerra sem vencedor.
-- **Integridade:** HMAC-SHA-256 encadeado por lance + arquivo de âncoras externo ao PostgreSQL; detecta inserções, alterações e exclusões, inclusive do último lance quando sua âncora foi persistida.
+- **Integridade:** HMAC-SHA-256 encadeado + âncoras externas, com outbox transacional persistente e reconciliação automática após falhas de gravação. Detecta mudanças no histórico, inclusive exclusão do último lance quando ancorado.
 - **Extras:** Cancelamento com estorno automático, Docker Compose, testes automatizados, Dark Mode, layout responsivo e impressão de comprovante como PDF.
 
 ## Pré-requisitos
@@ -78,7 +78,7 @@ O servidor Vite encaminha `/api` e `/socket.io` para a API; não é necessário 
 
 ### Contas de demonstração
 
-Com `DEMO_SEED=true` no `.env`, a seed cria 3 contas (se o banco ainda não tem lotes), 4 lotes, um ao vivo com lances, um futuro, um ao vivo sem lances e um encerrado com comprovante.
+Com `DEMO_SEED=true` no `.env`, o seed garante um leiloeiro, dois licitantes, lotes ao vivo (inclusive com lances), futuro e um arremate com comprovante. **Ele pode ser executado novamente:** preserva lances/históricos e só cria novos lotes quando os anteriores deixam de atender à vitrine demonstrativa. Os lotes principais ficam ativos por 14 e 20 dias, não por minutos. Também repõe saldo fictício dos usuários demo quando necessário, registrando o depósito.
 
 | Perfil | E-mail | Senha (somente demonstração) |
 |---|---|---|
@@ -104,7 +104,7 @@ O Docker Compose cria dois volumes independentes:
 - `postgres_data` — banco de dados.
 - `audit_anchors` — assinaturas externas de lances (fora do banco).
 
-**Não remova o volume de âncoras** enquanto os lotes correspondentes existirem. Guarde backups independentes e restrinja acesso a ele.
+**Não remova o volume de âncoras** enquanto os lotes correspondentes existirem. Guarde backups independentes, restrinja acesso e não altere `AUDIT_SECRET` ao atualizar o serviço: ambos são necessários para verificar lances anteriores. A outbox não substitui o volume externo.
 
 ## Deploy público com HTTPS
 
@@ -128,9 +128,9 @@ Não há URL publicada neste pacote: é necessário possuir a infraestrutura e t
 ## Testes e qualidade
 
 ```bash
-npm test                  # Node.js puro: domínio e auditoria
+npm test                  # Node.js puro: regras, auditoria, outbox e scheduler
 npm run test:api         # integração real com PostgreSQL (usa TEST_DATABASE_URL)
-npm run test:web         # Vitest: formatação de dinheiro
+npm run test:web         # Vitest: formatação e reconexão das salas
 npm run test:e2e         # Playwright: UI com mocks + Chromium desktop/mobile
 npm run lint:syntax      # parsing TS/TSX
 npm run typecheck        # TypeScript frontend
@@ -147,7 +147,17 @@ npm run test:api
 
 No PowerShell, defina `$env:TEST_DATABASE_URL` e `$env:DATABASE_URL` com o mesmo endereço de teste antes do `db:migrate`, depois restaure `DATABASE_URL` do projeto. Instale o navegador do Playwright antes do primeiro E2E: `npx playwright install chromium` (no Linux, eventualmente `npx playwright install --with-deps chromium`).
 
-Testes de interface usam mock da API, para repetibilidade. O teste de integração testa concorrência/estorno e adulteração **diretamente no PostgreSQL**, quando configurado.
+Os testes de interface normais usam mock da API para repetibilidade. O arquivo `e2e/real-flow.spec.ts` acrescenta **duas sessões reais**, lances via HTTP, WebSocket, saldos e auditoria. Execute somente contra **banco isolado, migrado e com seed**:
+
+```bash
+# Linux/macOS - depois de configurar DATABASE_URL e TEST_DATABASE_URL para o banco isolado
+DEMO_SEED=true npm run db:seed
+E2E_REAL=true npm run test:e2e
+```
+
+No Windows PowerShell, atribua `$env:DEMO_SEED='true'` e `$env:E2E_REAL='true'` antes dos comandos. O Playwright inicia backend + frontend em `E2E_REAL=true` e guarda capturas em `test-results/`. O teste de integração também verifica recuperação de âncoras e adulteração **diretamente no PostgreSQL**.
+
+O workflow `.github/workflows/checks.yml` automatiza o conjunto em um PostgreSQL descartável no GitHub Actions. **A pipeline foi criada, mas ainda não foi executada nesta sessão.** Não existe `package-lock.json` no pacote porque o registro npm estava inacessível durante a geração: em uma máquina com internet, execute `npm install`, versione o lockfile gerado e altere o passo de instalação do workflow e do `Dockerfile` para `npm ci` antes da submissão. Não invente dependências/transitivos para preencher esse arquivo.
 
 ## Arquitetura, estados e regras
 
@@ -179,7 +189,7 @@ se novo_lance for aceito: reservar novo valor e liberar reserva do líder anteri
 se vencedor encerrar: saldo_total -= valor; comprometido -= valor; leiloeiro += valor
 ```
 
-As alterações de carteira e histórico de lance são atômicas em transações `SERIALIZABLE`, com `SELECT FOR UPDATE` no lote e tentativas de recuperação em caso de conflito. Eventos de websocket notificam o navegador, mas a verdade permanece no banco. A assinatura HMAC usa segredo fora do banco e tem âncora em arquivo para detectar até exclusão do último evento. Se uma âncora não puder ser verificada, o encerramento é suspenso.
+As alterações de carteira e histórico de lance são atômicas em transações `SERIALIZABLE`, com `SELECT FOR UPDATE` no lote e tentativas de recuperação em caso de conflito. Eventos de websocket notificam o navegador a cada mudança de lote, inclusive na transição agendado→ao vivo; após reconexão a sala é reinscrita e os dados recarregados. A assinatura HMAC usa segredo fora do banco. Cada lance grava uma linha na outbox na mesma transação do dinheiro e depois sincroniza com arquivo externo, com nova tentativa pelo scheduler. Se uma âncora não puder ser verificada, o encerramento é suspenso.
 
 Há um scheduler que verifica o prazo de encerramento a cada 5 segundos. O estado temporal verdadeiro é calculado pelo relógio do servidor para impedir lances antes ou depois do intervalo. Toda liquidação é idempotente e protegida pela trava transacional do lote.
 
@@ -190,6 +200,7 @@ Há um scheduler que verifica o prazo de encerramento a cada 5 segundos. O estad
 - [Contrato das rotas REST](docs/API.md)
 - [Plano de testes e aceite](docs/TESTES_E_ACEITE.md)
 - [Uso de inteligência artificial](docs/USO_DE_IA.md)
+- [Checklist final de entrega e publicação](docs/ENTREGA.md)
 - [Art Institute of Chicago — documentação oficial](https://api.artic.edu/docs/)
 - [Prisma — transações e isolamento](https://www.prisma.io/docs/orm/v6/prisma-client/queries/transactions)
 
@@ -199,4 +210,4 @@ Há um scheduler que verifica o prazo de encerramento a cada 5 segundos. O estad
 - **Deploy público:** preencher após disponibilização real por HTTPS.
 - **Autoria e IA:** descrição honesta no arquivo [USO_DE_IA.md](docs/USO_DE_IA.md), que deve acompanhar o formulário de entrega.
 
-> Estado da validação na preparação do pacote: testes unitários Node passaram; sintaxe JS e TS/TSX foi inspecionada. A instalação npm, execução contra PostgreSQL, browser E2E e deploy público exigem ambiente externo e ainda não foram comprovados aqui. Consulte a matriz para diferenciar implementação de validação.
+> Validação deste pacote revisado: **11 testes Node unitários passaram**, sintaxe dos arquivos JavaScript foi conferida e o histórico Git foi preservado. Instalação npm, Prisma Client/migrações, typecheck, build React, integração PostgreSQL, Playwright e deploy público **não foram executados neste ambiente**. Consulte a matriz e o workflow para confirmar o estado efetivo de cada etapa.

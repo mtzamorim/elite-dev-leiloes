@@ -4,14 +4,15 @@
 
 | Camada | Comando | Cobertura principal |
 |---|---|---|
-| Domínio Node.js | `npm test` | Primeiro e próximos lances, anti-sniping, saldo, status, permissões, HMAC, auditoria de exclusão. |
-| Integração com PostgreSQL | `npm run test:api` | Lances concorrentes, liberação de reservas, liquidação exatamente uma vez, comprovante, cancelamento com estorno e alteração SQL direta. |
-| Utilitários React | `npm run test:web` | Conversão centavos/reais e formatação. |
-| E2E visual Chromium | `npm run test:e2e` | Vitrine, navegação, sala, lance simulado com API mockada, modal de estorno e Dark Mode persistido. |
+| Domínio Node.js | `npm test` | Regras, anti-sniping, assinaturas, recuperação de outbox sem duplicação, adulteração e início de leilões agendados. |
+| Integração com PostgreSQL | `npm run test:api` | Concorrência, reservas, liquidação idempotente, estorno, falha de âncora, recuperação e adulteração SQL (atualização e exclusão). |
+| Utilitários React | `npm run test:web` | Conversão monetária e reinscrição após reconexão Socket.IO. |
+| E2E visual Chromium | `npm run test:e2e` | Vitrine, sala, lance simulado, estorno e Dark Mode; capturas de vitrine desktop/mobile. |
+| E2E real Chromium | `E2E_REAL=true npm run test:e2e` | Dois licitantes, HTTP + banco + Socket.IO, saldo, histórico e screenshots da sala/auditoria; requer seed em banco isolado. |
 | Sintaxe TS/TSX | `npm run lint:syntax` | Parsing de todos os componentes TS/TSX. |
 | Tipagem e bundle | `npm run typecheck`, `npm run build` | TypeScript e Vite. |
 
-**Importante:** integração requer `TEST_DATABASE_URL` apontando para um PostgreSQL exclusivamente de testes, previamente migrado. E2E usa interceptação de API para estabilidade visual; não substitui integração real com o banco.
+**Importante:** integração requer `TEST_DATABASE_URL` apontando para PostgreSQL exclusivamente de testes, previamente migrado. O E2E padrão usa API mockada para estabilidade; `E2E_REAL=true` habilita o cenário real. `CI` usa PostgreSQL descartável. Capturas aparecem em `test-results/` e no artefato `playwright-artifacts` do GitHub Actions. Não execute E2E real em produção: ele registra contas, depósitos e lances de teste.
 
 ## Aceite manual recomendado
 
@@ -36,3 +37,15 @@
 5. Repita excluindo o último lance e ajustando o cabeçalho do lote de forma fraudulenta; a âncora externa remanescente deve denunciar a remoção.
 
 **Não** execute adulterações em produção. A integridade depende da chave secreta do servidor e da preservação do arquivo de âncoras fora do banco. Com âncora faltante, a auditoria sinaliza `INDETERMINADO` e a liquidação fica bloqueada para não premiar um histórico cuja integridade não foi demonstrada.
+
+## Cenários de recuperação implementados
+
+- Falha de escrita para arquivo de âncoras: lance fica salvo, `auditAnchored=false`, outbox `syncedAt=null`, auditoria `INDETERMINADO`; uma execução posterior completa a âncora e libera o encerramento.
+- Falha entre `fsync` e ACK: o reconciliador detecta a âncora já existente, não a duplica e marca a outbox como sincronizada.
+- Outbox alterada no banco: selo HMAC inválido impede exportação externa.
+- Scheduler: altera `SCHEDULED` para `LIVE` apenas uma vez e publica notificação para a sala correspondente.
+- Reconexão Socket.IO: o room é reinscrito, dados são consultados novamente e os listeners antigos são removidos no unmount.
+
+## Estado de execução
+
+Nesta revisão foram executados **11 testes unitários Node com sucesso**. A integração foi ignorada automaticamente por não existir `TEST_DATABASE_URL`/PostgreSQL neste ambiente; Vitest, typecheck, build e navegador real continuam pendentes de instalação das dependências. A configuração do GitHub Actions está incluída, porém precisa ser executada e observada antes da entrega final.

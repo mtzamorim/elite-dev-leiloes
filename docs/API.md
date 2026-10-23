@@ -22,7 +22,7 @@ Todos os endpoints têm prefixo `/api`, retornam JSON e utilizam horário ISO 86
 | POST | `/auctions` | Leiloeiro | Cria lote usando `artworkId` consultado na API externa; outros campos: `description`, `initialBidCents`, `incrementCents`, `startsAt`, `endsAt`. |
 | GET | `/auctions/mine` | Leiloeiro | Painel dos próprios lotes. |
 | POST | `/auctions/:id/cancel` | Dono do lote | Cancela e estorna o saldo do líder. Se há lances, exige `reason` de pelo menos 10 caracteres. |
-| POST | `/auctions/:id/bids` | Licitante | Lance `{ "amountCents": 15000 }`. Retorna `extended`, `auditAnchored`. |
+| POST | `/auctions/:id/bids` | Licitante | Lance `{ "amountCents": 15000 }`. Retorna `extended`, `auditAnchored`. `auditAnchored=false` significa lance efetivado + âncora pendente, reprocessada automaticamente pela outbox. Nunca repetir lance só por esse aviso. |
 
 ## Carteira e resultados
 
@@ -38,9 +38,9 @@ Todos os endpoints têm prefixo `/api`, retornam JSON e utilizam horário ISO 86
 
 ## Eventos Socket.IO
 
-- `auctions:changed` → emitido globalmente com `{id}` quando lote, lance, cancelamento ou resultado mudam.
+- `auctions:changed` → emitido globalmente com `{id}` quando lote, **início agendado**, lance, cancelamento ou resultado mudam.
 - `auction:join` / `auction:leave` → inscrição/remoção de sala pública de um lote.
-- `auction:changed` → sinal no room `auction:<id>`. O frontend recarrega o estado do servidor em vez de confiar em valores enviados pelo socket.
+- `auction:changed` → sinal no room `auction:<id>`. O frontend recarrega o estado do servidor em vez de confiar em valores enviados pelo socket. Após reconnect, reinscreve a sala e consulta o estado novamente.
 
 ## Erros esperados
 
