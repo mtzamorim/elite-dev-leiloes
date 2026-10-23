@@ -15,7 +15,7 @@
     "db:dev": "prisma migrate dev --schema apps/api/prisma/schema.prisma",
     "db:seed": "node apps/api/prisma/seed.js",
     "images:cache": "node scripts/cache-demo-artworks.mjs",
-    "test": "node --test apps/api/tests/domain.test.js apps/api/tests/audit.test.js apps/api/tests/scheduler.test.js",
+    "test": "node --test apps/api/tests/domain.test.js apps/api/tests/audit.test.js apps/api/tests/scheduler.test.js apps/api/tests/db.test.js",
     "test:all": "npm test && npm run test:api && npm run test:web",
     "test:api": "node --test apps/api/tests/*.integration.test.js",
     "test:web": "vitest run --config apps/web/vite.config.ts",
