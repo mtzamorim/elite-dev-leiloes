@@ -1,0 +1,67 @@
+name: Build, testes e integração
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atelier
+          POSTGRES_PASSWORD: atelier_test_only
+          POSTGRES_DB: atelier_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atelier -d atelier_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://atelier:atelier_test_only@127.0.0.1:5432/atelier_test?schema=public
+      TEST_DATABASE_URL: postgresql://atelier:atelier_test_only@127.0.0.1:5432/atelier_test?schema=public
+      JWT_SECRET: ci_test_only_jwt_secret_01234567890123456789
+      AUDIT_SECRET: ci_test_only_audit_secret_012345678901234567
+      AUDIT_ANCHOR_FILE: ${{ github.workspace }}/storage/audit-anchors.ndjson
+      DEMO_SEED: 'true'
+      NODE_ENV: test
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Assim que houver package-lock.json versionado, substituir por `npm ci`.
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Gerar Prisma Client e aplicar migrações
+        run: |
+          npm run db:generate
+          npm run db:migrate
+      - name: Validar sintaxe, tipos e bundle
+        run: |
+          npm run lint:syntax
+          npm run typecheck
+          npm run build
+      - name: Testar regras, API/Postgres e utilitários de UI
+        run: npm run test:all
+      - name: Preparar demonstração para E2E real
+        run: npm run db:seed
+      - name: Preparar Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Testes de interface mockados e fluxo real de ponta a ponta
+        run: E2E_REAL=true npm run test:e2e
+      - name: Evidências de falha Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
