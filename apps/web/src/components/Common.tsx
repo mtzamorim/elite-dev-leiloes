@@ -1,19 +1,21 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowRight,ImageOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type {Auction} from '../lib/types';
 import { formatMoney } from '../lib/api';
+import { getArtworkImageCandidates } from '../lib/artworkImages';
 import { Countdown,Status } from './Live';
 
-export function ArtworkImage({src,alt,className=''}:{src:string;alt:string;className?:string}) {
-  return src ? <img className={className} src={src} alt={alt} loading="lazy" onError={event=>{
-    event.currentTarget.style.visibility='hidden';
-    event.currentTarget.parentElement?.classList.add('image-fallback');
-  }}/> : <div className={`missing-image ${className}`}><ImageOff size={38} strokeWidth={1.2}/><span>Obra sem reprodução</span></div>;
+export function ArtworkImage({src,alt,artworkId,className=''}:{src:string;alt:string;artworkId?:number;className?:string}) {
+  const [attempt,setAttempt]=useState(0);
+  useEffect(()=>{setAttempt(0);},[src,artworkId]);
+  const candidate=getArtworkImageCandidates(src,artworkId)[attempt];
+  if (!candidate) return <div className={`missing-image ${className}`} role="img" aria-label={`${alt}: reprodução indisponível`}><ImageOff size={38} strokeWidth={1.2}/><span>Obra sem reprodução disponível</span></div>;
+  return <img className={className} src={candidate} alt={alt} loading="lazy" onError={()=>setAttempt(index=>index+1)}/>;
 }
 export function AuctionCard({auction}:{auction:Auction}) {
   return <Link className="auction-card" to={`/lote/${auction.id}`} aria-label={`Ver lote: ${auction.title}`}>
-    <div className="card-photo"><ArtworkImage src={auction.imageUrl} alt={auction.title}/><div className="photo-status"><Status status={auction.status}/></div></div>
+    <div className="card-photo"><ArtworkImage src={auction.imageUrl} artworkId={auction.artworkId} alt={auction.title}/><div className="photo-status"><Status status={auction.status}/></div></div>
     <div className="card-content"><span className="eyebrow small">{auction.artist}</span><h3>{auction.title}</h3>
       <div className="card-bottom"><div><span className="muted small">{auction.currentBidCents?'Lance atual':'Lance inicial'}</span><strong className="money">{formatMoney(auction.currentBidCents??auction.initialBidCents)}</strong></div><span className="card-arrow"><ArrowRight size={18}/></span></div>
       <div className="card-timer"><Countdown compact endAt={auction.endsAt} startAt={auction.startsAt} status={auction.status}/><span className="muted tiny">{auction.numberOfBids} {auction.numberOfBids===1?'lance':'lances'}</span></div>

@@ -26,3 +26,6 @@
 .mobile-top-menu button{display:flex;align-items:center;gap:10px;text-align:left;border:0;border-bottom:1px solid var(--line);padding:11px;background:transparent;color:var(--ink)}
 
 .outbid-banner{display:flex;gap:9px;align-items:flex-start;background:var(--red-soft);color:var(--red);font-weight:700;padding:14px;margin-bottom:15px;font-size:.84rem;line-height:1.55}.outbid-banner svg{flex-shrink:0;margin-top:1px}
+
+/* Reprodutor substituto para imagens indisponíveis, inclusive no destaque. */
+.featured-image>.missing-image{position:absolute;inset:0}

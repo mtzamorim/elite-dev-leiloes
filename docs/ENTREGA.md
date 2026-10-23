@@ -11,7 +11,13 @@ git commit -m "chore(deps): travar versoes do npm para builds reproduziveis"
 
 Depois, troque `npm install` por `npm ci` no workflow `.github/workflows/checks.yml` e no estágio de build do `Dockerfile` (copiar também `package-lock.json` para a imagem antes do `npm ci`), em um commit separado. A rede deste ambiente não permitiu gerar um lockfile verdadeiro; não inventar hashes, URLs ou versões transitivas.
 
-## 2. Validar tudo localmente (banco separado para testes)
+## 2. Confirmar miniaturas dos lotes de demonstração
+
+Antes do deploy, execute `npm run images:cache` com conexão à internet. O script baixa somente duas miniaturas de pinturas em domínio público da Wikimedia Commons para `apps/web/public/artworks/27992.jpg` e `28560.jpg`. Confira o resultado no navegador, depois **versione os arquivos** no Git: `git add apps/web/public/artworks/*.jpg` (o `*` é expandido por shells compatíveis; no CMD, informe os dois nomes explicitamente) e faça um commit. Isso garante que as imagens funcionem também quando a CDN externa estiver fora do ar. Não execute `db:seed` só para atualizar as imagens, pois isso não é necessário.
+
+Se o download falhar na sua rede, abra as duas páginas de origem informadas no README e salve as miniaturas JPEG com esses nomes. Verifique no DevTools/Network a origem da falha antes de marcar o problema como resolvido.
+
+## 3. Validar tudo localmente (banco separado para testes)
 
 ```bash
 npm run db:generate
@@ -33,7 +39,7 @@ E2E_REAL=true npm run test:e2e
 
 O teste E2E real cria contas, deposita créditos e registra lances, portanto nunca deve apontar para um banco de produção. Em Windows PowerShell, configure as variáveis via `$env:NOME='valor'` antes de rodar os comandos.
 
-## 3. Subir o GitHub público
+## 4. Subir o GitHub público
 
 Crie um repositório **público vazio** em sua conta GitHub. No clone local deste projeto, após revisar os commits:
 
@@ -45,7 +51,7 @@ git push -u origin main
 
 Se já houver `origin`, use `git remote set-url origin ...` em vez de `add`. Confira a aba **Actions** do GitHub: todos os jobs devem ficar verdes; baixe o artefato `playwright-artifacts` e inspecione capturas desktop/mobile, sala real e auditoria. Uma pipeline apenas criada (sem execução) não comprova o funcionamento.
 
-## 4. Publicar HTTPS com Compose
+## 5. Publicar HTTPS com Compose
 
 Em uma VPS com Docker Compose, DNS do domínio apontando para a VPS e portas 80/443 liberadas:
 
@@ -58,13 +64,14 @@ Em uma VPS com Docker Compose, DNS do domínio apontando para a VPS e portas 80/
 
 Se não houver lote ao vivo no momento da avaliação, **não altere dados antigos**: execute `docker compose -f compose.yaml -f compose.prod.yaml exec -e DEMO_SEED=true app npm run db:seed`. A seed é reexecutável e renova a demonstração sem apagar o histórico anterior.
 
-## 5. Evidências e submissão
+## 6. Evidências e submissão
 
 - [ ] Link GitHub público abre os arquivos, migrations, testes, documentação e histórico de commits.
 - [ ] GitHub Actions verde (incluindo PostgreSQL, React e Chromium).
 - [ ] URLs de HTTPS, login, sala de lote, auditoria e comprovante funcionam externamente.
 - [ ] Pelo menos um lote ao vivo possui lances; as contas de demonstração têm saldo.
 - [ ] `package-lock.json` e o uso de `npm ci` estão versionados.
+- [ ] As duas miniaturas da demonstração estão incluídas e aparecem no site público.
 - [ ] Capturas desktop/mobile e do teste E2E real revisadas.
 - [ ] README explica setup, características de simulação e limitações.
 - [ ] Campo sobre IA do formulário descreve de modo fiel o uso e as revisões realizadas.

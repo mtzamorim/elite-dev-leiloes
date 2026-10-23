@@ -211,3 +211,24 @@ Há um scheduler que verifica o prazo de encerramento a cada 5 segundos. O estad
 - **Autoria e IA:** descrição honesta no arquivo [USO_DE_IA.md](docs/USO_DE_IA.md), que deve acompanhar o formulário de entrega.
 
 > Validação deste pacote revisado: **11 testes Node unitários passaram**, sintaxe dos arquivos JavaScript foi conferida e o histórico Git foi preservado. Instalação npm, Prisma Client/migrações, typecheck, build React, integração PostgreSQL, Playwright e deploy público **não foram executados neste ambiente**. Consulte a matriz e o workflow para confirmar o estado efetivo de cada etapa.
+
+## Miniaturas de obras demonstrativas
+
+Os lotes do seed usam pinturas em domínio público do Art Institute of Chicago. Em algumas redes, a CDN IIIF do museu pode recusar o carregamento no navegador. O frontend tenta uma cópia local e fontes públicas alternativas, respeitando o identificador de cada obra (não troca Van Gogh por Seurat).
+
+Para eliminar a dependência de servidores de imagem durante a apresentação, execute **uma vez, com internet**, antes do build/deploy:
+
+```bash
+npm run images:cache
+```
+
+O comando salva `apps/web/public/artworks/27992.jpg` (Seurat) e `apps/web/public/artworks/28560.jpg` (Van Gogh). Confirme que as obras aparecem corretamente na vitrine e na sala do lote. Inclua esses dois JPEGs no Git antes do deploy:
+
+```bash
+git add apps/web/public/artworks/27992.jpg apps/web/public/artworks/28560.jpg
+git commit -m "chore(assets): adicionar miniaturas publicas dos lotes demo"
+```
+
+Não é necessário limpar o banco nem executar a seed para resolver imagens de lotes existentes. Para imagens de novas obras pesquisadas no catálogo, a URL IIIF da API continua sendo utilizada; sem conexão com o museu, o componente exibe uma indicação de imagem indisponível, sem substituir a obra por uma imagem incorreta.
+
+**Fontes e licença:** pinturas em domínio público. Reproduções demonstrativas disponibilizadas no [Wikimedia Commons - Seurat](https://commons.wikimedia.org/wiki/File:A_Sunday_on_La_Grande_Jatte,_Georges_Seurat,_1884.jpg) e [Wikimedia Commons - Van Gogh](https://commons.wikimedia.org/wiki/File:Van_Gogh_-_The_Bedroom,_1889_Chicago.jpg). Consulte também a [documentação oficial da API IIIF do museu](https://api.artic.edu/docs/).

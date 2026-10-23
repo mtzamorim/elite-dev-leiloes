@@ -29,7 +29,7 @@ app.set('trust proxy',process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.set('json replacer',(_key,value)=>typeof value==='bigint' ? String(value) : value);
 app.use(helmet({contentSecurityPolicy:{directives:{
   defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],
-  imgSrc:["'self'",'data:','https://www.artic.edu'],connectSrc:["'self'",'ws:','wss:'],
+  imgSrc:["'self'",'data:','https://www.artic.edu','https://thumb.wikimedia.org'],connectSrc:["'self'",'ws:','wss:'],
   fontSrc:["'self'",'data:','https://fonts.gstatic.com'],objectSrc:["'none'"]
 }}}));
 app.use(express.json({limit:'32kb'}));

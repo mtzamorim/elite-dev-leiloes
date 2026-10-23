@@ -10,10 +10,11 @@ if (process.env.DEMO_SEED !== 'true') {
   process.exit(0);
 }
 
-const fallbackImage='https://www.artic.edu/iiif/2/2d484387-2509-5e8e-2c43-22f9981972eb/full/843,/0/default.jpg';
+const seuratImage='https://www.artic.edu/iiif/2/2d484387-2509-5e8e-2c43-22f9981972eb/full/843,/0/default.jpg';
+const vanGoghImage='https://www.artic.edu/iiif/2/6ad8f7d6-c8a9-5216-2664-09bd5691c6ed/full/843,/0/default.jpg';
 const snapshot=[
-  {artworkId:27992,title:'A Sunday on La Grande Jatte — 1884',artist:'Georges Seurat',artworkDate:'1884–1886',imageUrl:fallbackImage},
-  {artworkId:28560,title:'The Bedroom',artist:'Vincent van Gogh',artworkDate:'1889',imageUrl:fallbackImage}
+  {artworkId:27992,title:'A Sunday on La Grande Jatte — 1884',artist:'Georges Seurat',artworkDate:'1884–1886',imageUrl:seuratImage},
+  {artworkId:28560,title:'The Bedroom',artist:'Vincent van Gogh',artworkDate:'1889',imageUrl:vanGoghImage}
 ];
 
 async function seededArtwork(index) {
