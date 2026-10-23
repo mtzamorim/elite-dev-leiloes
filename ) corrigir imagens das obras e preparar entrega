@@ -1,0 +1,20 @@
+ README.md                              |   21 [32m+[m
+ apps/api/prisma/seed.js                |    7 [32m+[m[31m-[m
+ apps/api/src/server.js                 |    2 [32m+[m[31m-[m
+ apps/web/public/artworks/27992.jpg     |  Bin [31m0[m -> [32m289752[m bytes
+ apps/web/public/artworks/28560.jpg     |  Bin [31m0[m -> [32m304025[m bytes
+ apps/web/src/components/Common.tsx     |   16 [32m+[m[31m-[m
+ apps/web/src/lib/artworkImages.test.ts |   25 [32m+[m
+ apps/web/src/lib/artworkImages.ts      |   29 [32m+[m
+ apps/web/src/pages/AuctionPage.tsx     |    2 [32m+[m[31m-[m
+ apps/web/src/pages/HomePage.tsx        |    2 [32m+[m[31m-[m
+ apps/web/src/pages/SellerPage.tsx      |    6 [32m+[m[31m-[m
+ apps/web/src/pages/WinsPage.tsx        |    2 [32m+[m[31m-[m
+ apps/web/src/styles.css                |    3 [32m+[m
+ compose.dev.yaml                       |    2 [32m+[m[31m-[m
+ docs/ENTREGA.md                        |   15 [32m+[m[31m-[m
+ package-lock.json                      | 4720 [32m++++++++++++++++++++++++++++++++[m
+ package.json                           |    1 [32m+[m
+ scripts/cache-demo-artworks.mjs        |   43 [32m+[m
+ scripts/deploy-prod.sh                 |    0
+ 19 files changed, 4874 insertions(+), 22 deletions(-)
