@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { prisma, serializable, lockAuction, lockUser } from '../lib/db.js';
 import { badRequest } from '../lib/http.js';
 import { auctionState, extendedDeadline, minimumNextBid, validateBid } from '../domain/rules.js';
-import { anonymousBidder, bidDigest, receiptDigest, validateBidChain } from '../domain/crypto.js';
-import { appendAnchor, auctionAudit } from './audit.js';
+import { anonymousBidder, anchorDigest, bidDigest, receiptDigest, validateBidChain } from '../domain/crypto.js';
+import { auctionAudit, flushAuditOutbox } from './audit.js';
 import { getArtwork } from './artworks.js';
 
 export function auctionView(auction, secret, viewerId = null) {
@@ -80,6 +80,8 @@ export async function placeBid({auctionId,userId,amountCents,secret,anchorFile,n
     const draft={auctionId,sequence:auction.nextSequence,userId,amountCents:amount,createdAt:now,previousHash:auction.chainHead};
     const signature=bidDigest(secret,draft);
     const bid=await tx.bid.create({data:{...draft,signature}});
+    // Durável e atômico com o lance: se o processo cair, o cron pode concluir a âncora.
+    await tx.auditAnchorOutbox.create({data:{auctionId,sequence:bid.sequence,signature,seal:anchorDigest(secret,bid)}});
     const deadline=extendedDeadline(auction.endsAt,now);
     await tx.auction.update({where:{id:auctionId},data:{
       currentBidCents:amount,leaderId:userId,chainHead:signature,nextSequence:{increment:1},
@@ -88,7 +90,7 @@ export async function placeBid({auctionId,userId,amountCents,secret,anchorFile,n
     return {bid,extended:deadline.getTime()>auction.endsAt.getTime()};
   });
   let auditAnchored=true;
-  try { await appendAnchor(anchorFile,secret,outcome.bid); }
+  try { await flushAuditOutbox({db:prisma,filename:anchorFile,secret,auctionId}); }
   catch(error) { auditAnchored=false; console.error('[AUDITORIA] Lance aceito, mas âncora externa pendente:',error); }
   notify?.(auctionId);
   return {sequence:outcome.bid.sequence,amountCents:outcome.bid.amountCents,extended:outcome.extended,auditAnchored};
@@ -117,6 +119,8 @@ export async function cancelAuction({auctionId,ownerId,reason,notify}) {
 }
 
 export async function settleAuction({auctionId,secret,anchorFile,notify}) {
+  try { await flushAuditOutbox({db:prisma,filename:anchorFile,secret,auctionId}); }
+  catch(error) { console.error('[AUDITORIA] Reconciliação anterior ao encerramento falhou:',auctionId,error); }
   const outcome=await serializable(async tx=>{
     await lockAuction(tx,auctionId);
     const auction=await tx.auction.findUnique({where:{id:auctionId}});

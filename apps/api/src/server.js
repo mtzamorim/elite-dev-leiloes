@@ -19,6 +19,7 @@ import { makeAuctionRoutes } from './routes/auctions.js';
 import { makeAuditRoutes } from './routes/audit.js';
 import { makeUserRoutes } from './routes/users.js';
 import { settleAuction } from './services/auctions.js';
+import { flushAuditOutbox } from './services/audit.js';
 import { activateScheduledAuctions } from './services/scheduler.js';
 
 assertConfiguration();
@@ -94,6 +95,9 @@ async function tick() {
   busy=true;
   try {
     const now=new Date();
+    // O reconciliador também é acionado depois de cada lance; aqui recupera falhas/crashes.
+    try { await flushAuditOutbox({db:prisma,secret:env.auditSecret,filename:env.anchorFile,limit:100}); }
+    catch(error) { console.error('[AUDITORIA] Âncoras pendentes; nova tentativa no próximo ciclo:',error); }
     await activateScheduledAuctions(prisma,notify,now);
     const ended=await prisma.auction.findMany({where:{status:{in:['SCHEDULED','LIVE']},endsAt:{lte:now}},select:{id:true},orderBy:{endsAt:'asc'},take:40});
     for(const auction of ended) {

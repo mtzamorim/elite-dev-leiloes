@@ -111,3 +111,17 @@ model Receipt {
   signature    String
   createdAt    DateTime @default(now())
 }
+
+// Registrado na MESMA transação financeira do lance. A âncora em arquivo é
+// reconciliada após o commit, permitindo recuperação de interrupções do processo.
+// Sem FK para Bid: exclusões fraudulentas de Bid precisam ser detectáveis na auditoria.
+model AuditAnchorOutbox {
+  auctionId  String    @db.Uuid
+  sequence   Int
+  signature  String
+  seal       String
+  createdAt  DateTime  @default(now())
+  syncedAt   DateTime?
+  @@id([auctionId, sequence])
+  @@index([syncedAt, createdAt])
+}
