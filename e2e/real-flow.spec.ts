@@ -58,6 +58,10 @@ test('dois licitantes disputam no PostgreSQL e recebem eventos sem recarregar',a
     expect(one.wallet.committedCents).toBe('0');
     expect(two.wallet.committedCents).toBe(String(secondAmount));
     expect(auditResult.audit.status).toBe('INTEGRO');
+    await secondPage.screenshot({path:testInfo.outputPath('sala-real.png'),fullPage:true});
+    await firstPage.goto(`/auditoria/${lot.id}`);
+    await expect(firstPage.getByText('Histórico íntegro e verificado')).toBeVisible();
+    await firstPage.screenshot({path:testInfo.outputPath('auditoria-real.png'),fullPage:true});
   } finally {
     await firstContext?.close();
     await secondContext?.close();

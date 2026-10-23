@@ -63,3 +63,11 @@ test('licitante superado recebe indicador explícito na sala',async({page})=>{
   await page.goto(`/lote/${auctionId}`);
   await expect(page.getByText(/Você foi superado\. Faça um novo lance/)).toBeVisible();
 });
+
+
+test('evidência visual da vitrine responsiva',async({page},testInfo)=>{
+  await mockBase(page);
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:/Arte que inspira/i})).toBeVisible();
+  await page.screenshot({path:testInfo.outputPath('vitrine.png'),fullPage:true});
+});

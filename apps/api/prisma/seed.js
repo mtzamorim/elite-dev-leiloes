@@ -54,13 +54,15 @@ try {
   // Um novo lote e criado somente quando nao existe vitrine demo com pelo menos 2 h restantes.
   const now=new Date();
   const safeDeadline=new Date(now.getTime()+2*60*60_000);
-  const liveCount=await prisma.auction.count({where:{ownerId:seller.id,status:{in:['LIVE','SCHEDULED']},startsAt:{lte:now},endsAt:{gt:safeDeadline}}});
-  if(liveCount===0) {
+  const liveFilter={ownerId:seller.id,status:{in:['LIVE','SCHEDULED']},startsAt:{lte:now},endsAt:{gt:safeDeadline}};
+  const liveWithBids=await prisma.auction.findFirst({where:{...liveFilter,bids:{some:{}}},select:{id:true}});
+  if(!liveWithBids) {
     const live=await lot(seller.id,0,-30,14*24*60,300_000,25_000,'Obra histórica selecionada da coleção pública. Lances acompanhados em tempo real.');
     await placeBid({auctionId:live.id,userId:ana.id,amountCents:300_000,secret:env.auditSecret,anchorFile:env.anchorFile});
     await placeBid({auctionId:live.id,userId:bruno.id,amountCents:325_000,secret:env.auditSecret,anchorFile:env.anchorFile});
     console.info('Seed: novo lote demonstrativo ao vivo com lances (14 dias de duração).');
   }
+  const liveCount=await prisma.auction.count({where:liveFilter});
   if(liveCount<2) {
     await lot(seller.id,0,-10,20*24*60,450_000,30_000,'Segundo lote de demonstração aberto a novos licitantes.');
   }

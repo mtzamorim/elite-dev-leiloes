@@ -56,8 +56,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Testes de interface mockados e fluxo real de ponta a ponta
         run: E2E_REAL=true npm run test:e2e
-      - name: Evidências de falha Playwright
-        if: failure()
+      - name: Evidências de execução Playwright
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts
