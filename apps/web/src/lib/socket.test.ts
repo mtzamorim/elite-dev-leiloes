@@ -1,6 +1,6 @@
 import { describe,expect,it,vi } from 'vitest';
 import type { Socket } from 'socket.io-client';
-import { subscribeAuctionEvents } from './socket';
+import { subscribeAuctionEvents } from './socketSubscriptions';
 
 describe('inscrição das salas Socket.IO',()=>{
   it('reinscreve após reconectar, atualiza a sala e remove listeners ao desmontar',()=>{

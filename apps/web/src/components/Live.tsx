@@ -1,5 +1,6 @@
 import { useEffect,useMemo,useState } from 'react';
-import { socket,subscribeAuctionEvents } from '../lib/socket';
+import { socket } from '../lib/socket';
+import { subscribeAuctionEvents } from '../lib/socketSubscriptions';
 import type { AuctionStatus } from '../lib/types';
 
 export function useAuctionEvents(refresh:()=>void,id?:string) {

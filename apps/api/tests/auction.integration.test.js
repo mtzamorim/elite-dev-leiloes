@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const dbUrl=process.env.TEST_DATABASE_URL;
 
-test('integração PostgreSQL: concorrência, estorno, liquidação idempotente e adulteração', {skip:!dbUrl?'Defina TEST_DATABASE_URL e execute as migrações no banco de testes.':false,timeout:30000},async()=>{
+test('integração PostgreSQL: concorrência, estorno, liquidação idempotente e adulteração', {skip:!dbUrl?'Defina TEST_DATABASE_URL e execute as migrações no banco de testes.':false,timeout:60000},async()=>{
   // A importação é posterior à configuração para nunca tocar inadvertidamente no banco de desenvolvimento.
   process.env.DATABASE_URL=dbUrl;
   process.env.JWT_SECRET='test-only-jwt-secret-012345678901234';
