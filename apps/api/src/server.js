@@ -19,6 +19,7 @@ import { makeAuctionRoutes } from './routes/auctions.js';
 import { makeAuditRoutes } from './routes/audit.js';
 import { makeUserRoutes } from './routes/users.js';
 import { settleAuction } from './services/auctions.js';
+import { activateScheduledAuctions } from './services/scheduler.js';
 
 assertConfiguration();
 const app=express();
@@ -93,7 +94,7 @@ async function tick() {
   busy=true;
   try {
     const now=new Date();
-    await prisma.auction.updateMany({where:{status:'SCHEDULED',startsAt:{lte:now},endsAt:{gt:now}},data:{status:'LIVE'}});
+    await activateScheduledAuctions(prisma,notify,now);
     const ended=await prisma.auction.findMany({where:{status:{in:['SCHEDULED','LIVE']},endsAt:{lte:now}},select:{id:true},orderBy:{endsAt:'asc'},take:40});
     for(const auction of ended) {
       try { await settleAuction({auctionId:auction.id,secret:env.auditSecret,anchorFile:env.anchorFile,notify}); }

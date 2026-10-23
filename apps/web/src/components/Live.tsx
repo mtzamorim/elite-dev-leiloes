@@ -1,14 +1,9 @@
 import { useEffect,useMemo,useState } from 'react';
-import { socket } from '../lib/socket';
+import { socket,subscribeAuctionEvents } from '../lib/socket';
 import type { AuctionStatus } from '../lib/types';
 
 export function useAuctionEvents(refresh:()=>void,id?:string) {
-  useEffect(()=>{
-    const event=id?'auction:changed':'auctions:changed';
-    socket.on(event,refresh);
-    if(id) socket.emit('auction:join',id);
-    return ()=>{socket.off(event,refresh);if(id)socket.emit('auction:leave',id);};
-  },[refresh,id]);
+  useEffect(()=>subscribeAuctionEvents(socket,refresh,id),[refresh,id]);
 }
 
 function remaining(until:string,now:number) {
