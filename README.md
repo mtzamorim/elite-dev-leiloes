@@ -232,3 +232,23 @@ git commit -m "chore(assets): adicionar miniaturas publicas dos lotes demo"
 Não é necessário limpar o banco nem executar a seed para resolver imagens de lotes existentes. Para imagens de novas obras pesquisadas no catálogo, a URL IIIF da API continua sendo utilizada; sem conexão com o museu, o componente exibe uma indicação de imagem indisponível, sem substituir a obra por uma imagem incorreta.
 
 **Fontes e licença:** pinturas em domínio público. Reproduções demonstrativas disponibilizadas no [Wikimedia Commons - Seurat](https://commons.wikimedia.org/wiki/File:A_Sunday_on_La_Grande_Jatte,_Georges_Seurat,_1884.jpg) e [Wikimedia Commons - Van Gogh](https://commons.wikimedia.org/wiki/File:Van_Gogh_-_The_Bedroom,_1889_Chicago.jpg). Consulte também a [documentação oficial da API IIIF do museu](https://api.artic.edu/docs/).
+
+## Demonstração pública
+
+**Aplicação:**
+https://desktop-ijib82b.tail0cc840.ts.net/
+
+**Código-fonte:**
+https://github.com/mtzamorim/elite-dev-leiloes
+
+**Testes automatizados:**
+https://github.com/mtzamorim/elite-dev-leiloes/actions
+
+### Ambiente de demonstração
+
+A aplicação é uma simulação de leilões, com
+créditos fictícios e dados demonstrativos.
+
+A demonstração está hospedada temporariamente
+em uma máquina local, exposta por HTTPS usando
+Tailscale Funnel.
