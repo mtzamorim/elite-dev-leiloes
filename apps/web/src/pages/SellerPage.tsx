@@ -14,6 +14,7 @@ export function SellerPage() {
   const [results,setResults]=useState<Artwork[]>([]);
   const [selected,setSelected]=useState<Artwork|null>(null);
   const [searching,setSearching]=useState(false);
+  const [searched,setSearched]=useState(false);
   const [creating,setCreating]=useState(false);
   const [initial,setInitial]=useState('1000');
   const [increment,setIncrement]=useState('100');
@@ -28,8 +29,8 @@ export function SellerPage() {
   const load=useCallback(async()=>{if(user?.role!=='AUCTIONEER')return;try{const data=await api<{items:Auction[]}>('/auctions/mine');setLots(data.items);}catch(e){setError((e as Error).message);}},[user]);
   useEffect(()=>{void load();},[load]);useAuctionEvents(load);
   const search=async(event:FormEvent)=>{
-    event.preventDefault();setSearching(true);setError('');setSuccess('');
-    try{const data=await api<{artworks:Artwork[]}>(`/artworks?q=${encodeURIComponent(query)}`);setResults(data.artworks);}
+    event.preventDefault();setSearching(true);setError('');setSuccess('');setSearched(false);
+    try{const data=await api<{artworks:Artwork[]}>(`/artworks?q=${encodeURIComponent(query)}`);setResults(data.artworks);setSearched(true);}
     catch(e){setError((e as Error).message);}finally{setSearching(false);}
   };
   const create=async(event:FormEvent)=>{
@@ -39,7 +40,7 @@ export function SellerPage() {
       const start=new Date(startsAt),end=new Date(endsAt);
       if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime()))throw new Error('Informe datas de início e fim válidas.');
       await post('/auctions',{artworkId:selected.artworkId,description,startsAt:start.toISOString(),endsAt:end.toISOString(),initialBidCents:reaisToCents(initial),incrementCents:reaisToCents(increment)});
-      setSuccess('Lote publicado! Ele já está disponível na vitrine.');setSelected(null);setResults([]);setQuery('');setDescription('');await load();
+      setSuccess('Lote publicado! Ele já está disponível na vitrine.');setSelected(null);setResults([]);setQuery('');setSearched(false);setDescription('');await load();
     }catch(e){setError((e as Error).message);}finally{setCreating(false);}
   };
   const doCancel=async()=>{
@@ -58,7 +59,7 @@ export function SellerPage() {
       <div className="create-layout"><div className="artwork-picker"><h3>Escolha a obra</h3><form onSubmit={search} className="artwork-search"><label className="search-field"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} minLength={2} maxLength={80} placeholder="Busque por artista ou obra" aria-label="Pesquisar obras no catálogo" required/></label><button className="btn btn-dark" type="submit" disabled={searching}>{searching?'Buscando...':'Buscar'}</button></form>
           {selected&&<div className="selected-art"><div className="selected-art-image"><ArtworkImage src={selected.imageUrl} artworkId={selected.artworkId} alt={selected.title}/></div><div><small>OBRA SELECIONADA</small><strong>{selected.title}</strong><span>{selected.artist}</span></div><button type="button" onClick={()=>setSelected(null)} aria-label="Limpar seleção"><X size={18}/></button></div>}
           {results.length>0&&<div className="artwork-results" aria-label="Resultados de obras">{results.map(item=><button className={`artwork-result ${selected?.artworkId===item.artworkId?'selected':''}`} key={item.artworkId} onClick={()=>setSelected(item)} type="button" aria-pressed={selected?.artworkId===item.artworkId}><span className="result-img"><ArtworkImage src={item.imageUrl} artworkId={item.artworkId} alt={item.title}/></span><span><strong>{item.title}</strong><small>{item.artist}</small></span>{selected?.artworkId===item.artworkId&&<CheckCircle2 size={19}/>}</button>)}</div>}
-          {results.length===0&&!selected&&<div className="artwork-placeholder"><Search size={28}/><p>Busque uma obra para começar a curadoria.</p><small>Experimente “Van Gogh”, “Seurat” ou “Monet”.</small></div>}
+          {results.length===0&&!selected&&<div className="artwork-placeholder"><Search size={28}/><p>{searched ? 'Nenhuma obra encontrada para essa busca.' : 'Busque uma obra para começar a curadoria.'}</p><small>{searched ? 'Tente outro artista ou título.' : 'Experimente “Van Gogh”, “Seurat” ou “Monet”.'}</small></div>}
         </div>
         <form id="create-auction-form" className="auction-create-fields" onSubmit={create}><h3>Configure o leilão</h3><label htmlFor="starting">Lance inicial (R$)</label><div className="money-input"><span>R$</span><input id="starting" type="number" min="1" step="0.01" required value={initial} onChange={e=>setInitial(e.target.value)}/></div><label htmlFor="increment">Incremento mínimo (R$)</label><div className="money-input"><span>R$</span><input id="increment" type="number" min="1" step="0.01" required value={increment} onChange={e=>setIncrement(e.target.value)}/></div>
           <div className="form-two-col"><div><label htmlFor="starts-at">Início</label><input id="starts-at" type="datetime-local" required value={startsAt} onChange={e=>setStartsAt(e.target.value)}/></div><div><label htmlFor="ends-at">Encerramento</label><input id="ends-at" type="datetime-local" required value={endsAt} onChange={e=>setEndsAt(e.target.value)}/></div></div>
