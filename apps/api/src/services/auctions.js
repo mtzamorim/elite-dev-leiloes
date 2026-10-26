@@ -5,10 +5,13 @@ import { auctionState, extendedDeadline, minimumNextBid, validateBid } from '../
 import { anonymousBidder, anchorDigest, bidDigest, receiptDigest, validateBidChain } from '../domain/crypto.js';
 import { auctionAudit, flushAuditOutbox } from './audit.js';
 import { getArtwork } from './artworks.js';
+import { cacheClevelandArtworkImage } from './catalogImages.js';
 
 export function auctionView(auction, secret, viewerId = null) {
   return {
     id:auction.id,
+    artworkSource:auction.artworkSource || 'ART_INSTITUTE',
+    artworkUrl:auction.artworkUrl || `https://www.artic.edu/artworks/${auction.artworkId}`,
     title:auction.title,
     artist:auction.artist,
     imageUrl:auction.imageUrl,
@@ -35,7 +38,7 @@ export function auctionView(auction, secret, viewerId = null) {
 
 export async function createAuction({ownerId,input,notify}) {
   let artwork;
-  try { artwork=await getArtwork(input.artworkId); }
+  try { artwork=await getArtwork(input.artworkId, input.artworkSource || 'ART_INSTITUTE'); }
   catch { badRequest('ARTWORK_API_UNAVAILABLE','Não foi possível consultar a obra selecionada no catálogo externo.',503); }
   if(!artwork) badRequest('ARTWORK_NOT_FOUND','Obra não encontrada ou sem imagem pública disponível.',422);
   const startsAt=new Date(input.startsAt);
@@ -49,6 +52,13 @@ export async function createAuction({ownerId,input,notify}) {
     initialBidCents:BigInt(input.initialBidCents),incrementCents:BigInt(input.incrementCents),
     startsAt,endsAt,status:startsAt.getTime()<=now?'LIVE':'SCHEDULED'
   }});
+  // Store a copy of the selected CC0 image in the persistent storage volume.
+  // If the provider is temporarily offline, do not lose the lot: the web client
+  // will retry the direct CDN URL and the curator may upload a local copy.
+  if (auction.artworkSource === 'CLEVELAND') {
+    try { await cacheClevelandArtworkImage(auction.artworkId); }
+    catch (error) { console.warn('[Imagem] Não foi possível armazenar cópia local:', error.message); }
+  }
   notify?.(auction.id);
   return auction;
 }

@@ -12,6 +12,13 @@ enum UserRole {
   BIDDER
 }
 
+// Museum source is attached to the lot, so numeric IDs from different catalogs
+// cannot be mistaken for the same artwork. Existing lots remain Art Institute.
+enum ArtworkSource {
+  ART_INSTITUTE
+  CLEVELAND
+}
+
 enum AuctionStatus {
   SCHEDULED
   LIVE
@@ -49,6 +56,8 @@ model Auction {
   winnerId           String?       @db.Uuid
   winner             User?         @relation("WonAuctions", fields: [winnerId], references: [id])
   artworkId          Int
+  artworkSource      ArtworkSource @default(ART_INSTITUTE)
+  artworkUrl         String?
   title              String        @db.VarChar(280)
   artist             String        @db.VarChar(280)
   imageUrl           String

@@ -15,7 +15,7 @@
     "db:dev": "prisma migrate dev --schema apps/api/prisma/schema.prisma",
     "db:seed": "node apps/api/prisma/seed.js",
     "images:cache": "node scripts/cache-demo-artworks.mjs",
-    "test": "node --test apps/api/tests/domain.test.js apps/api/tests/audit.test.js apps/api/tests/scheduler.test.js apps/api/tests/db.test.js apps/api/tests/artworks.test.js",
+    "test": "node --test apps/api/tests/domain.test.js apps/api/tests/audit.test.js apps/api/tests/scheduler.test.js apps/api/tests/db.test.js apps/api/tests/artworks.test.js apps/api/tests/lotImages.test.js apps/api/tests/cleveland.test.js apps/api/tests/catalogImages.test.js",
     "test:all": "npm test && npm run test:api && npm run test:web",
     "test:api": "node --test apps/api/tests/*.integration.test.js",
     "test:web": "npm run test -w @atelier/web",
@@ -24,11 +24,12 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.0",
+    "@types/node": "^26.6.5",
     "concurrently": "9.1.2",
     "prisma": "6.19.0",
     "typescript": "5.8.3",
-    "vitest": "3.1.1",
-    "@playwright/test": "1.55.0"
+    "vitest": "3.1.1"
   },
   "engines": {
     "node": ">=20.11"

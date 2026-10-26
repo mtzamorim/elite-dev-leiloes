@@ -1,4 +1,5 @@
 export type Role = 'AUCTIONEER' | 'BIDDER';
+export type ArtworkSource = 'ART_INSTITUTE' | 'CLEVELAND';
 export type AuctionStatus = 'LIVE' | 'SCHEDULED' | 'FINISHING' | 'ENDED' | 'CANCELED';
 export type Money = string; // centavos no backend (BigInt serializado)
 
@@ -7,6 +8,7 @@ export interface User {
 }
 export interface Auction {
   id:string; title:string;artist:string;artworkDate:string;artworkId:number;
+  artworkSource:ArtworkSource;artworkUrl:string|null;
   description:string;imageUrl:string;ownerName:string;
   initialBidCents:Money;incrementCents:Money;currentBidCents:Money | null;
   minNextBidCents:Money;leaderAlias:string|null;isLeading:boolean;isOwner:boolean;hasParticipated?:boolean;
@@ -26,6 +28,7 @@ export interface WalletEntry {
 }
 export interface Artwork {
   artworkId:number;title:string;artist:string;artworkDate:string;imageUrl:string;
+  artworkSource:ArtworkSource;artworkUrl:string;
 }
 export interface Receipt {
   id:string;auctionId:string;winningBidId:string;winnerAlias:string;

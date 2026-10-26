@@ -1,11 +1,7 @@
 /**
- * Fontes de reprodução para as duas obras públicas usadas na demonstração.
- *
- * Servimos primeiro a miniatura local, se instalada por `npm run images:cache`.
- * Em seguida tentamos a reprodução da Wikimedia Commons e a imagem IIIF
- * oficial. Não reutilizamos uma obra para representar outra.
- *
- * Outras obras usam a URL retornada pela API do museu normalmente.
+ * Fontes reais de imagem: priorizar uploads locais e reproduções autorizadas.
+ * Não usar a LQIP (2-5 pixels) do museu como imagem final.
+ * Para o IIIF, testar variantes oficiais de 843, 600 e 400 px.
  */
 const DEMO_IMAGES: Record<number, string[]> = {
   27992: [
@@ -20,10 +16,32 @@ const DEMO_IMAGES: Record<number, string[]> = {
   ]
 };
 
-export function getArtworkImageCandidates(src: string, artworkId?: number): string[] {
+export function getArtworkImageCandidates(src: string, artworkId?: number, source: 'ART_INSTITUTE'|'CLEVELAND' = 'ART_INSTITUTE'): string[] {
+  const imageUrl = src?.trim() || '';
+
+  // Uploads do próprio lote têm prioridade, INCLUSIVE para os dois IDs de demonstração.
+  if (imageUrl.startsWith('/lot-images/')) return [imageUrl];
+
+  if (source === 'CLEVELAND') {
+    if (!Number.isSafeInteger(artworkId) || !artworkId || artworkId <= 0) return imageUrl ? [imageUrl] : [];
+    // Public-domain CDN first; when unavailable, try the server-side persistent
+    // cache, which uses a verified URL tied to this exact Cleveland artwork ID.
+    const verifiedCdn = /^https:\/\/openaccess-cdn\.clevelandart\.org\//i.test(imageUrl);
+    const local = `/catalog-images/cma/${artworkId}`;
+    return verifiedCdn ? [imageUrl, local] : [local];
+  }
+
   const known = artworkId === undefined ? undefined : DEMO_IMAGES[artworkId];
-  if (!known) return src?.trim() ? [src] : [];
-  // Um registro legado do seed usa por engano a URL da obra 27992 no lote 28560.
-  // O vínculo pela artworkId garante que não exibiremos o quadro errado.
-  return Array.from(new Set(known));
+  if (known) return [...new Set(known)];
+  if (!imageUrl) return [];
+
+  // Variantes de tamanho documentadas pelo Art Institute. Cloudflare ainda pode
+  // bloquear todas: nesse caso, mostraremos estado indisponível em vez da LQIP.
+  const match = /^https:\/\/www\.artic\.edu\/iiif\/2\/[a-z0-9-]{10,60}\/full\/843,\/0\/default\.jpg$/i.exec(imageUrl);
+  if (match) return [
+    imageUrl,
+    imageUrl.replace('/full/843,/', '/full/600,/'),
+    imageUrl.replace('/full/843,/', '/full/400,/')
+  ];
+  return [imageUrl];
 }

@@ -3,7 +3,7 @@
 **Teste técnico Elite Dev — Verzel**  
 React + TypeScript · Node.js + Express · PostgreSQL + Prisma · Socket.IO
 
-Uma casa de leilões de obras de arte do acervo público do **Art Institute of Chicago**. Leiloeiros publicam lotes; licitantes depositam créditos fictícios, dão lances em tempo real e recebem comprovantes compartilháveis. O público acompanha uma auditoria criptográfica sem login.
+Uma casa de leilões de obras de arte dos acervos públicos do **Cleveland Museum of Art** (novos lotes com imagem CC0) e do **Art Institute of Chicago** (lotes anteriores e dados demonstrativos). Leiloeiros publicam lotes; licitantes depositam créditos fictícios, dão lances em tempo real e recebem comprovantes compartilháveis. O público acompanha uma auditoria criptográfica sem login.
 
 > **Simulação educacional.** Não processa pagamentos reais, não transfere titularidade de obras e não emite notas fiscais.
 
@@ -11,7 +11,7 @@ Uma casa de leilões de obras de arte do acervo público do **Art Institute of C
 
 - **Perfis separados:** Leiloeiro publica/gerencia; Licitante deposita, participa, acompanha lances e arremates. Regras de autorização validadas no backend.
 - **Vitrine:** Lotes ao vivo, programados e encerrados; cancelados não aparecem. Busca por obra/artista, filtros e paginação.
-- **Catálogo externo:** Busca no Art Institute of Chicago com timeout de 5 s, cache e snapshot local no lote. Indisponibilidade externa não afeta leilões publicados.
+- **Catálogo externo:** Novos lotes pesquisados no Cleveland Museum of Art, limitados a obras CC0 com imagem; lotes existentes do Art Institute preservados. Cache em disco para imagens selecionadas e snapshot no lote. Indisponibilidade externa não afeta leilões publicados.
 - **Sala ao vivo:** Lance atual, mínimo seguinte, líder anônimo, histórico, contagem regressiva e Socket.IO com reinscrição automática da sala após reconexões (sem F5).
 - **Carteira:** Saldo total, comprometido, disponível, depósitos fictícios e lançamentos. Reservas transferidas quando há novo líder.
 - **Anti-sniping:** Lance válido aceito com até 2 minutos restantes prorroga `endsAt` em mais 2 minutos.
@@ -202,6 +202,7 @@ Há um scheduler que verifica o prazo de encerramento a cada 5 segundos. O estad
 - [Uso de inteligência artificial](docs/USO_DE_IA.md)
 - [Checklist final de entrega e publicação](docs/ENTREGA.md)
 - [Art Institute of Chicago — documentação oficial](https://api.artic.edu/docs/)
+- [Cleveland Museum of Art — Open Access API](https://openaccess-api.clevelandart.org/)
 - [Prisma — transações e isolamento](https://www.prisma.io/docs/orm/v6/prisma-client/queries/transactions)
 
 ## Informações da entrega
@@ -210,7 +211,7 @@ Há um scheduler que verifica o prazo de encerramento a cada 5 segundos. O estad
 - **Deploy público:** preencher após disponibilização real por HTTPS.
 - **Autoria e IA:** descrição honesta no arquivo [USO_DE_IA.md](docs/USO_DE_IA.md), que deve acompanhar o formulário de entrega.
 
-> Validação deste pacote revisado: **11 testes Node unitários passaram**, sintaxe dos arquivos JavaScript foi conferida e o histórico Git foi preservado. Instalação npm, Prisma Client/migrações, typecheck, build React, integração PostgreSQL, Playwright e deploy público **não foram executados neste ambiente**. Consulte a matriz e o workflow para confirmar o estado efetivo de cada etapa.
+> Validação desta correção: **31 testes Node aprovados** no ambiente local de análise (domínio, auditoria, AIC, Cleveland e cache de imagens), e arquivos JS/TS/TSX analisados sem erro de sintaxe. O build completo React/Prisma, a nova migração em PostgreSQL e as imagens reais servidas pelo CDN **ainda precisam ser validados na máquina da publicação**. O GitHub Actions deve ser executado novamente após aplicar este patch.
 
 ## Miniaturas de obras demonstrativas
 
@@ -233,22 +234,78 @@ Não é necessário limpar o banco nem executar a seed para resolver imagens de 
 
 **Fontes e licença:** pinturas em domínio público. Reproduções demonstrativas disponibilizadas no [Wikimedia Commons - Seurat](https://commons.wikimedia.org/wiki/File:A_Sunday_on_La_Grande_Jatte,_Georges_Seurat,_1884.jpg) e [Wikimedia Commons - Van Gogh](https://commons.wikimedia.org/wiki/File:Van_Gogh_-_The_Bedroom,_1889_Chicago.jpg). Consulte também a [documentação oficial da API IIIF do museu](https://api.artic.edu/docs/).
 
-## Demonstração pública
+## Imagens bloqueadas pelo museu (Cloudflare / IIIF)
 
-**Aplicação:**
-https://desktop-ijib82b.tail0cc840.ts.net/
+A API do Art Institute of Chicago pode retornar os metadados da obra com sucesso,
+mas o host de imagens IIIF (`www.artic.edu/iiif/2`) pode responder HTTP 403.
+Isso nao e falha do PostgreSQL, do Tailscale nem da busca por artistas.
 
-**Código-fonte:**
-https://github.com/mtzamorim/elite-dev-leiloes
+Para lotes antigos do Art Institute, o frontend tenta imagens IIIF oficiais,
+sem usar a miniatura LQIP (poucos pixels) como reprodução definitiva. Quando o
+museu bloqueia as imagens, o estado indisponível é exibido corretamente.
 
-**Testes automatizados:**
-https://github.com/mtzamorim/elite-dev-leiloes/actions
+Para ter uma reproducao de qualidade em qualquer lote (inclusive ja criado),
+o leiloeiro deve abrir **Painel do leiloeiro > Seu catalogo**, clicar no botao
+**Adicionar imagem** ao lado do lote e enviar JPEG, PNG ou WebP de ate 4 MB.
+Somente lotes nao encerrados e **sem nenhum lance** permitem a troca, impedindo
+alteracoes da representacao da obra depois que a disputa comecou.
+A imagem deve representar **exatamente aquela obra** e ter permissao de uso.
 
-### Ambiente de demonstração
+Os arquivos sao gravados em `storage/lot-images/` e a URL relativa fica em
+`Auction.imageUrl`, sem nova migracao. O diretorio `storage/` ja esta ignorado
+pelo Git e inclui o volume persistente de `/app/storage` na configuracao Docker.
+**Nao apague `storage/lot-images/` nem o volume associado**, pois lotes apontam
+para esses arquivos. Nao confunda esse armazenamento com o arquivo de assinaturas
+da auditoria, que tambem deve ser preservado e ter backups independentes.
 
-A aplicação é uma simulação de leilões, com
-créditos fictícios e dados demonstrativos.
+> Se o lote ja recebeu lances, publique um novo lote com a imagem correta,
+> em vez de substituir a imagem de um leilao em andamento. Os lotes antigos
+> sem imagem permanecem identificados como indisponíveis até receberem uma reprodução válida.
 
-A demonstração está hospedada temporariamente
-em uma máquina local, exposta por HTTPS usando
-Tailscale Funnel.
+## Catálogo de novas obras com imagens CC0 (Cleveland Museum of Art)
+
+Para evitar a indisponibilidade recorrente das imagens IIIF do Art Institute, a busca
+do leiloeiro agora utiliza por padrão a API oficial **Cleveland Museum of Art Open Access**.
+Ela pesquisa por título ou artista (`q`), exige `cc0` e `has_image=1`, e verifica
+novamente que cada resultado seja CC0, com URL HTTPS do CDN autorizado.
+
+- O identificador da fonte (`Auction.artworkSource`) é versionado na migração
+  `20261025000000_artwork_sources`. Lotes existentes recebem `ART_INSTITUTE`
+  automaticamente, sem apagar históricos, saldos ou assinaturas.
+- Cada novo lote guarda `artworkSource`, `artworkId`, `artworkUrl` e a imagem original
+  da coleção escolhida. Os IDs de museus diferentes nunca são misturados.
+- Quando uma imagem web não abre no navegador, o frontend tenta
+  `/catalog-images/cma/:id`. O backend somente baixa o mesmo item do CDN
+  `openaccess-cdn.clevelandart.org`, valida os bytes e salva uma cópia em
+  `storage/catalog-images/` (máximo 4 MB). Esse diretório está no volume
+  persistente já usado pela aplicação. A cópia também é tentada ao publicar o lote.
+- Se o CDN ficar indisponível ANTES do cache, a imagem poderá continuar ausente;
+  o leiloeiro poderá anexar uma reprodução autorizada daquela mesma obra antes
+  de receber lances. Não são fabricadas imagens.
+- Os lotes anteriores do Art Institute **não são trocados automaticamente** por
+  obras do Cleveland: são objetos diferentes e isso comprometeria a curadoria.
+
+### Atualizar uma instalação existente
+
+Com a aplicação Node parada no Windows, mas o PostgreSQL em execução:
+
+```cmd
+npm run db:generate
+npm run db:migrate
+npm test
+npm run test:web
+npm run typecheck
+npm run build
+set NODE_ENV=production
+set TRUST_PROXY=true
+npm start
+```
+
+O `build` já gera o Prisma Client de novo; executar `db:generate` separadamente
+é uma conferência opcional. Não use `docker compose down -v`, não apague o
+banco nem os diretórios `storage/`. No Windows, o backend deve estar parado
+para não manter o motor Prisma DLL bloqueado durante o `db:generate`.
+
+A integração ao vivo com o CDN precisa ser confirmada na máquina publicada,
+pois o ambiente de desenvolvimento dos patches não possui acesso direto
+à internet externa. Consulte os logs do backend caso o CDN responda HTTP 403/502.

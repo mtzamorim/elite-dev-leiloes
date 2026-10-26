@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { searchArtworks, getArtwork } from '../src/services/artworks.js';
+import { searchArtworks, getArtwork, getArtworkPreview } from '../src/services/artworks.js';
 
 function response(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -122,4 +122,23 @@ test('direct demo artwork lookup survives an unavailable upstream', async t => {
   const item = await getArtwork(28560);
   assert.equal(item?.artist, 'Vincent van Gogh');
   assert.equal(item?.imageUrl, '/artworks/28560.jpg');
+});
+
+
+test('preview recovers the museum original LQIP GIF without IIIF', async t => {
+  const data=Buffer.from('GIF89a1234567890123456789');
+  t.mock.method(globalThis, 'fetch', async input => {
+    const url=new URL(input);
+    assert.equal(url.pathname, '/api/v1/artworks/65001');
+    assert.equal(url.searchParams.get('fields'),'id,is_public_domain,thumbnail');
+    return response({data:{id:65001,is_public_domain:true,thumbnail:{lqip:`data:image/gif;base64,${data.toString('base64')}`}}});
+  });
+  const found=await getArtworkPreview(65001);
+  assert.deepEqual(found,data);
+  assert.equal((await getArtworkPreview(65001)).length,data.length);
+});
+
+test('preview never exposes copyrighted or invalid image data', async t => {
+  t.mock.method(globalThis, 'fetch', async () => response({data:{id:65002,is_public_domain:false,thumbnail:{lqip:'data:image/gif;base64,R0lGODlh'}}}));
+  assert.equal(await getArtworkPreview(65002),null);
 });

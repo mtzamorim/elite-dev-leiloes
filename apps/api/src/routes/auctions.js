@@ -1,14 +1,18 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
-import { prisma } from '../lib/db.js';
+import { prisma, serializable, lockAuction } from '../lib/db.js';
 import { requireAuth,requireRole } from '../lib/auth.js';
 import { badRequest,wrap } from '../lib/http.js';
 import { anonymousBidder } from '../domain/crypto.js';
 import { auctionView,cancelAuction,createAuction,placeBid } from '../services/auctions.js';
+import { auctionState } from '../domain/rules.js';
+import { MAX_IMAGE_BYTES, saveLotImage, discardLotImage, removePreviousLotImage } from '../services/lotImages.js';
 
 const uuid=z.string().uuid();
 const auctionInput=z.object({
   artworkId:z.number().int().positive(),
+  artworkSource:z.enum(['ART_INSTITUTE','CLEVELAND']).optional().default('ART_INSTITUTE'),
   description:z.string().max(1200).optional().default(''),
   initialBidCents:z.number().int().min(100).max(100_000_000_00),
   incrementCents:z.number().int().min(100).max(10_000_000_00),
@@ -47,6 +51,40 @@ export function makeAuctionRoutes({secret,anchorFile,notify}) {
     const stored=await prisma.auction.findUniqueOrThrow({where:{id:auction.id},include});
     res.status(201).json({auction:auctionView(stored,secret,req.user.id)});
   }));
+  // Uma imagem licenciada pelo curador e guardada no volume local substitui
+  // a URL IIIF indisponivel. A alteracao e permitida apenas SEM lances.
+  routes.put('/:id/image', requireAuth, requireRole('AUCTIONEER'),
+    rateLimit({windowMs:60_000,limit:8,standardHeaders:'draft-7',legacyHeaders:false}),
+    express.raw({type:'image/*',limit:MAX_IMAGE_BYTES}), wrap(async(req,res)=>{
+      const id=uuid.parse(req.params.id);
+      const existing=await prisma.auction.findUnique({where:{id},select:{ownerId:true}});
+      if(!existing)badRequest('NOT_FOUND','Lote nao encontrado.',404);
+      if(existing.ownerId!==req.user.id)badRequest('FORBIDDEN','Somente o proprietario pode enviar a reproducao.',403);
+      let saved;
+      try {
+        try { saved=await saveLotImage({auctionId:id,bytes:req.body,contentType:req.get('content-type')}); }
+        catch(error){ badRequest('INVALID_IMAGE',error.message,422); }
+        const oldUrl=await serializable(async tx=>{
+          await lockAuction(tx,id);
+          const auction=await tx.auction.findUniqueOrThrow({where:{id}});
+          if(auction.ownerId!==req.user.id)badRequest('FORBIDDEN','Lote de outro leiloeiro.',403);
+          if(!['SCHEDULED','LIVE'].includes(auctionState(auction)) || auction.nextSequence!==1) {
+            badRequest('IMAGE_LOCKED','A imagem so pode ser alterada em lotes nao encerrados e sem lances.',409);
+          }
+          await tx.auction.update({where:{id},data:{imageUrl:saved.url}});
+          return auction.imageUrl;
+        });
+        // Nao falhar uma alteracao ja confirmada no banco por limpeza de arquivos.
+        try { await removePreviousLotImage(oldUrl,id); }
+        catch(error){ console.warn('[Imagem] Imagem anterior nao removida:',error.message); }
+        notify?.(id);
+        res.json({imageUrl:saved.url});
+      }catch(error){
+        if(saved)await discardLotImage(saved.filepath).catch(()=>{});
+        throw error;
+      }
+    }));
+
   routes.get('/:id',wrap(async(req,res)=>{
     const id=uuid.parse(req.params.id);
     const auction=await prisma.auction.findUnique({where:{id},include});

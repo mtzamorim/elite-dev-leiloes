@@ -18,9 +18,10 @@ Todos os endpoints têm prefixo `/api`, retornam JSON e utilizam horário ISO 86
 | GET | `/auctions?q=&status=LIVE&page=1` | Público | Vitrine paginada, 12 por página. Status ALL, LIVE, SCHEDULED, ENDED. Cancelados omitidos. |
 | GET | `/auctions/:id` | Público | Lote com lance atual, líder anônimo, prazo, status e regras de entrada. |
 | GET | `/auctions/:id/bids` | Público | Últimos 500 lances para a sala em tempo real (auditoria tem histórico completo). |
-| GET | `/artworks?q=monet` | Leiloeiro | Busca pública no Art Institute of Chicago, limitada e com cache. |
-| POST | `/auctions` | Leiloeiro | Cria lote usando `artworkId` consultado na API externa; outros campos: `description`, `initialBidCents`, `incrementCents`, `startsAt`, `endsAt`. |
+| GET | `/artworks?q=monet` | Leiloeiro | Busca no Cleveland Museum of Art: somente obras CC0 com imagens, cache e limite de resultados. `source=ART_INSTITUTE` mantém o catálogo anterior, sujeito a imagens IIIF indisponíveis. |
+| POST | `/auctions` | Leiloeiro | Cria lote usando `artworkId` e `artworkSource` (`CLEVELAND` ou `ART_INSTITUTE`) consultados na API externa; outros campos: `description`, `initialBidCents`, `incrementCents`, `startsAt`, `endsAt`. |
 | GET | `/auctions/mine` | Leiloeiro | Painel dos próprios lotes. |
+| GET | `/catalog-images/cma/:id` | Público | Imagem CC0 de uma obra do Cleveland, obtida de host validado e armazenada em `storage/catalog-images`. Rota fora do prefixo `/api`. |
 | POST | `/auctions/:id/cancel` | Dono do lote | Cancela e estorna o saldo do líder. Se há lances, exige `reason` de pelo menos 10 caracteres. |
 | POST | `/auctions/:id/bids` | Licitante | Lance `{ "amountCents": 15000 }`. Retorna `extended`, `auditAnchored`. `auditAnchored=false` significa lance efetivado + âncora pendente, reprocessada automaticamente pela outbox. Nunca repetir lance só por esse aviso. |
 

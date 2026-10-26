@@ -21,6 +21,8 @@ import { makeUserRoutes } from './routes/users.js';
 import { settleAuction } from './services/auctions.js';
 import { flushAuditOutbox } from './services/audit.js';
 import { activateScheduledAuctions } from './services/scheduler.js';
+import { lotImageDirectory } from './services/lotImages.js';
+import { cacheClevelandArtworkImage } from './services/catalogImages.js';
 
 assertConfiguration();
 const app=express();
@@ -29,7 +31,7 @@ app.set('trust proxy',process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.set('json replacer',(_key,value)=>typeof value==='bigint' ? String(value) : value);
 app.use(helmet({contentSecurityPolicy:{directives:{
   defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],
-  imgSrc:["'self'",'data:','https://www.artic.edu','https://thumb.wikimedia.org'],connectSrc:["'self'",'ws:','wss:'],
+  imgSrc:["'self'",'data:','https://www.artic.edu','https://thumb.wikimedia.org','https://openaccess-cdn.clevelandart.org'],connectSrc:["'self'",'ws:','wss:'],
   fontSrc:["'self'",'data:','https://fonts.gstatic.com'],objectSrc:["'none'"]
 }}}));
 app.use(express.json({limit:'32kb'}));
@@ -80,6 +82,20 @@ app.use('/api/artworks',artworkRoutes);
 app.use('/api/auctions',makeAuctionRoutes({secret:env.auditSecret,anchorFile:env.anchorFile,notify}));
 app.use('/api/me',makeUserRoutes(env.auditSecret));
 app.use('/api/audit',makeAuditRoutes({secret:env.auditSecret,anchorFile:env.anchorFile}));
+app.get('/catalog-images/cma/:id',wrap(async(req,res)=>{
+  if(!/^[1-9][0-9]{0,9}$/.test(req.params.id)) return res.sendStatus(404);
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id > 2147483647) return res.sendStatus(404);
+  try {
+    const image = await cacheClevelandArtworkImage(id);
+    res.set('Cache-Control','public, max-age=604800');
+    res.type(image.contentType).send(image.bytes);
+  } catch(error) {
+    console.warn('[Catálogo] Falha ao recuperar imagem de obra:',id,error.message);
+    res.status(502).end();
+  }
+}));
+app.use('/lot-images',express.static(lotImageDirectory,{index:false,maxAge:'30d',immutable:true,dotfiles:'deny'}));
 app.use('/api',(_req,res)=>res.status(404).json({error:{code:'NOT_FOUND',message:'Rota não encontrada.'}}));
 
 const webDist=fileURLToPath(new URL('../../web/dist/',import.meta.url));
